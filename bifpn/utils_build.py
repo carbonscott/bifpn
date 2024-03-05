@@ -2,27 +2,34 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from dataclasses import dataclass, field
+from typing import Dict
+
+@dataclass
+class BackboneToBiFPNAdapterConfig:
+    num_bifpn_features      : int  = 256
+    backbone_output_channels: Dict[str, int] = field(default_factory=lambda: {
+        "stage0": 40,
+        "stage1": 80,
+        "stage2": 160,
+        "stage3": 320,
+    })
+
 class BackboneToBiFPNAdapter(nn.Module):
     """
     A class to create an adapter layer that connects the output of a backbone network
     to the input of a BiFPN (Bidirectional Feature Pyramid Network) layer.
-
-    Parameters:
-    - num_bifpn_features: The number of output features for the BiFPN.
-    - backbone_output_channels: A dictionary where keys are layer names and
-                                values are the number of output channels from the backbone.
     """
+    @staticmethod
+    def get_default_config():
+        return BackboneToBiFPNAdapterConfig()
 
-    def __init__(self, num_bifpn_features=256, backbone_output_channels=None):
+    def __init__(self, config = None):
         super().__init__()
 
-        if backbone_output_channels is None:
-            backbone_output_channels = {
-                "layer1": 40,
-                "layer2": 80,
-                "layer3": 160,
-                "layer4": 320,
-            }
+        self.config              = BackboneToBiFPNAdapter.get_default_config() if config is None else config
+        num_bifpn_features       = self.config.num_bifpn_features
+        backbone_output_channels = self.config.backbone_output_channels
 
         self.adapters = nn.ModuleList([
             nn.Conv2d(in_channels=in_channels, 
